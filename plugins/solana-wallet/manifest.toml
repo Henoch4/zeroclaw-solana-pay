@@ -1,0 +1,7 @@
+name = "solana-wallet"
+version = "0.1.0"
+description = "Solana wallet toolkit: build unsigned transactions, generate Solana Pay transfer URLs, verify payments by reference key, and manage durable nonces. Pure core with no RPC client — the agent provides transport."
+author = "solana-payments-terminal"
+wasm_path = "solana_wallet.wasm"
+capabilities = ["tool"]
+permissions = ["config_read"]

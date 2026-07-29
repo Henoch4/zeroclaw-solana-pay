@@ -1,0 +1,133 @@
+schema_version = 3
+
+[agents.solana-payments]
+channels = ["cli.default", "webhook.payments"]
+model_provider = "github_models.default"
+risk_profile = "default"
+runtime_profile = "default"
+skill_bundles = ["solana-payments"]
+
+[channels.webhook.payments]
+enabled = true
+port = 42617
+path = "/webhook"
+reply_min_interval_secs = 0
+reply_queue_depth_max = 0
+
+[agents.solana-payments.identity]
+format = "openclaw"
+
+[providers.models.github_models.default]
+name = "github-models"
+model = "openai/gpt-4o"
+max_tokens = 8192
+temperature = 0.5
+# api_key = "your-github-models-pat-here"
+
+[risk_profiles.default]
+level = "supervised"
+allowed_tools = ["network", "shell", "memory", "read", "file_read"]
+allowed_commands = ["ls", "git", "cat", "echo", "curl", "wget"]
+allowed_roots = ["."]
+auto_approve = ["network", "shell", "memory"]
+block_high_risk_commands = true
+
+[runtime_profiles.default]
+max_tool_iterations = 25
+max_context_tokens = 64000
+compact_context = false
+parallel_tools = true
+agentic = true
+agentic_timeout_secs = 120
+shell_timeout_secs = 30
+
+[skill_bundles.solana-payments]
+directory = "shared/skills"
+
+[plugins]
+enabled = true
+plugins_dir = "plugins"
+auto_discover = true
+max_plugins = 10
+
+[plugins.limits]
+call_fuel = 1000000000
+max_memory_mb = 256
+
+[plugins.security]
+signature_mode = "disabled"
+
+[sop]
+default_execution_mode = "supervised"
+approval_mode = "both"
+approval_timeout_secs = 300
+step_schema_enforce = false
+step_scope_enforce = false
+max_concurrent_total = 4
+# sops_dir = "/path/to/your/agent/data/sops"
+
+[scheduler]
+enabled = true
+max_concurrent = 4
+
+[cron.verify-payment]
+job_type = "agent"
+name = "Verify pending payments"
+prompt = "Run the verify-payment SOP to check all pending invoices for blockchain confirmation."
+session_target = "isolated"
+enabled = true
+model = "openai/gpt-4o"
+
+[cron.verify-payment.schedule]
+kind = "every"
+every_ms = 60000
+
+[cron.daily-report]
+job_type = "agent"
+name = "Daily payment report"
+prompt = "Run the daily-report SOP to summarize today's completed payments."
+session_target = "isolated"
+enabled = true
+model = "openai/gpt-4o"
+
+[cron.daily-report.schedule]
+kind = "cron"
+expr = "0 8 * * *"
+tz = "UTC"
+
+[memory]
+backend = "sqlite"
+auto_save = true
+hygiene_enabled = true
+conversation_retention_days = 7
+
+[cost]
+enabled = true
+daily_limit_usd = 10.0
+monthly_limit_usd = 100.0
+
+[security.audit]
+enabled = true
+log_path = "audit.log"
+max_size_mb = 100
+sign_events = false
+
+[channels]
+cli = true
+ack_reactions = false
+show_tool_calls = true
+message_timeout_secs = 120
+session_persistence = true
+session_backend = "sqlite"
+
+[observability]
+backend = "none"
+log_persistence = "rolling"
+log_persistence_path = "state/runtime-trace.jsonl"
+log_tool_io = "redacted"
+
+[gateway]
+port = 42617
+host = "127.0.0.1"
+require_pairing = false
+allow_public_bind = false

@@ -1,0 +1,9 @@
+[sop]
+name = "refund-flow"
+description = "Process a refund request with fraud check and owner approval"
+version = "1.0.0"
+max_concurrent = 1
+admission_policy = "hold"
+
+[[triggers]]
+type = "manual"

@@ -1,0 +1,39 @@
+# Binaries
+*.exe
+*.wasm
+*.dll
+
+# Build artifacts
+target/
+node_modules/
+
+# Runtime data
+agent/data/
+agent/state/
+
+# Secrets
+agent/config.toml
+agent/.secret_key
+agent/agent.yaml
+*.secret
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+*.jsonl
+state/
+audit.log
+run-log.md
+prompt.txt
+
+# Temp
+*.tmp
