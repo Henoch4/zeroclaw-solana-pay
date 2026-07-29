@@ -75,7 +75,7 @@ These aren't thin RPC wrappers — they're real crypto operations that belong in
 | Threat | Mitigation |
 |---|---|
 | Prompt injection: "refund to attacker address" | Approval checkpoint catches it — human must approve the destination and amount |
-| Prompt injection: "send me 1000 USDC" | `max_payment_amount_units` cap (100 USDC) enforced in agent instructions |
+| Prompt injection: "send me 50000 USDC" | Hard cap (1,000 USDC) enforced in agent skill instructions |
 | RPC key leakage | Key lives in encrypted config section, never in code |
 | Blockhash expiry for refunds | Durable nonce support in the WASM plugin solves this |
 | Customer tries to underpay | Agent verifies exact amount from `getSignaturesForAddress` |
@@ -186,14 +186,16 @@ As noted in the bounty (Tier 3 caveats), the modular Solana crates compile clean
 ```
 solana-payments-terminal/
 ├── agent/
-│   ├── agent.yaml                         # ZeroClaw agent configuration
-│   ├── skills/
-│   │   ├── payment-terminal.skill.md      # Payment terminal workflow
-│   │   └── solana-guide.skill.md          # Solana RPC & Pay knowledge
-│   └── sops/
-│       ├── verify-payment.cron.md         # Payment polling (every 15s)
-│       ├── daily-report.cron.md           # End-of-day reconciliation
-│       └── refund-flow.sop.md             # Refund with approval gate
+│   ├── config.toml.example                # Agent config (secrets redacted)
+│   ├── shared/skills/
+│   │   ├── payment-terminal/SKILL.md      # Payment terminal workflow
+│   │   └── solana-guide/SKILL.md          # Solana RPC & Pay knowledge
+│   ├── sops/
+│   │   ├── verify-payment.cron.md         # Payment polling (every 60s)
+│   │   ├── daily-report.cron.md           # End-of-day reconciliation
+│   │   └── refund-flow/
+│   │       └── SOP.md                     # Refund with approval gate
+│   └── data/sops/                         # Runtime SOPs (gitignored)
 ├── plugins/
 │   └── solana-wallet/
 │       ├── Cargo.toml                     # wasm32-wasip2 cdylib

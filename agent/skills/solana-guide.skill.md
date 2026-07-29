@@ -6,40 +6,50 @@ No plugins or custom code required.
 
 ## Solana RPC Endpoints
 
-### Devnet RPC (testing)
+### Mainnet RPC
 ```
-POST https://api.devnet.solana.com
+POST https://api.mainnet-beta.solana.com
 ```
-
-On Windows, always use `curl.exe` (full path: C:\Windows\System32\curl.exe). Do NOT use `curl` — that's an alias for Invoke-WebRequest in PowerShell and will fail.
 
 ### Key Methods for Payment Terminal
 
-**getLatestBlockhash** — Get recent blockhash:
-```shell
-curl.exe -X POST https://api.devnet.solana.com -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getLatestBlockhash\"}"
-```
-Result blockhash is in the `result.value.blockhash` field of the JSON response.
-
 **getSignaturesForAddress** — Check payment status by reference key:
-```shell
-curl.exe -X POST https://api.devnet.solana.com -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getSignaturesForAddress\",\"params\":[\"REFERENCE_KEY\",{\"limit\":5}]}"
+```json
+POST {rpc_url}
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "getSignaturesForAddress",
+  "params": ["REFERENCE_KEY_HERE", {"limit": 5}]
+}
 ```
 
 Response contains signatures with confirmation counts.
-- `confirmations: null` means finalized (max confirmations)
-- `confirmations: 0` means just processed
+- `"confirmations": null` means finalized (max confirmations)
+- `"confirmations": 0` means just processed
 - Wait for at least 32 confirmations or null
 
 **getBalance** — Check wallet balance:
-```shell
-curl.exe -X POST https://api.devnet.solana.com -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getBalance\",\"params\":[\"WALLET_ADDRESS\"]}"
+```json
+POST {rpc_url}
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "getBalance",
+  "params": ["WALLET_ADDRESS"]
+}
 ```
 Returns balance in lamports. Divide by 10^9 for SOL.
 
 **getTokenAccountBalance** — Check USDC balance:
-```shell
-curl.exe -X POST https://api.devnet.solana.com -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getTokenAccountBalance\",\"params\":[\"TOKEN_ACCOUNT\"]}"
+```json
+POST {rpc_url}
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "getTokenAccountBalance",
+  "params": ["TOKEN_ACCOUNT_ADDRESS"]
+}
 ```
 
 ## Solana Pay Protocol
@@ -77,8 +87,8 @@ to track which transactions are associated with this payment.
 
 ## USDC on Solana
 
-USDC mint address (devnet):
-`Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr` (Circle faucet devnet USDC)
+USDC mint address (mainnet):
+`EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`
 
 USDC has 6 decimal places.
 - 1 USDC = 1,000,000 units
@@ -94,7 +104,7 @@ USDC has 6 decimal places.
 ## Error Handling
 
 - Blockhash expires after ~90 seconds. Use `getLatestBlockhash` (not the deprecated `getRecentBlockhash`). For pending payments, the Solana Pay URL is valid until the customer uses it - the wallet handles blockhash refresh.
-- RPC rate limits: devnet public endpoint is rate-limited. Use a paid
-  endpoint for mainnet production (Helius, Triton, QuickNode).
+- RPC rate limits: public endpoints are rate-limited. Use a paid
+  endpoint for production (Helius, Triton, QuickNode).
 - getSignaturesForAddress can return empty array if no payment yet.
   Keep polling on cron every 10 seconds until confirmed or timeout.
