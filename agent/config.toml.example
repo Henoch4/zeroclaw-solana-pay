@@ -64,7 +64,7 @@ approval_timeout_secs = 300
 step_schema_enforce = false
 step_scope_enforce = false
 max_concurrent_total = 4
-# sops_dir = "/path/to/your/agent/data/sops"
+sops_dir = "sops"
 
 [scheduler]
 enabled = true
