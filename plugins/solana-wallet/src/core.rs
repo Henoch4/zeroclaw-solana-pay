@@ -279,7 +279,7 @@ pub fn build_unsigned_sol_transfer(
 ) -> Result<String, String> {
     let from_pk = parse_pubkey(from)?;
     let to_pk = parse_pubkey(to)?;
-    let _hash = parse_hash(blockhash)?;
+    let hash = parse_hash(blockhash)?;
     let system_id = parse_pubkey(SYSTEM_PROGRAM_ID)?;
     let ix = solana_instruction::Instruction {
         program_id: system_id,
@@ -289,7 +289,8 @@ pub fn build_unsigned_sol_transfer(
         ],
         data: encode_system_transfer_data(lamports),
     };
-    let message = solana_message::Message::new(&[ix], Some(&from_pk));
+    let mut message = solana_message::Message::new(&[ix], Some(&from_pk));
+    message.recent_blockhash = hash;
     let msg_bytes = bincode::serialize(&message)
         .map_err(|e| format!("Message serialization failed: {e}"))?;
     Ok(base64_engine().encode(msg_bytes))
@@ -298,11 +299,11 @@ pub fn build_unsigned_sol_transfer(
 pub fn build_unsigned_advance_nonce(
     nonce_address: &str,
     authority: &str,
-    _new_blockhash: &str,
+    blockhash: &str,
 ) -> Result<String, String> {
     let nonce_pk = parse_pubkey(nonce_address)?;
     let auth_pk = parse_pubkey(authority)?;
-    let _new_hash = parse_hash(_new_blockhash)?;
+    let hash = parse_hash(blockhash)?;
     let system_id = parse_pubkey(SYSTEM_PROGRAM_ID)?;
     let recent_blockhashes_id = parse_pubkey("SysvarRecentB1ockHashes1111111111111111111")?;
 
@@ -315,7 +316,8 @@ pub fn build_unsigned_advance_nonce(
         ],
         data: encode_advance_nonce_data(),
     };
-    let message = solana_message::Message::new(&[ix], Some(&auth_pk));
+    let mut message = solana_message::Message::new(&[ix], Some(&auth_pk));
+    message.recent_blockhash = hash;
     let msg_bytes = bincode::serialize(&message)
         .map_err(|e| format!("Message serialization failed: {e}"))?;
     Ok(base64_engine().encode(msg_bytes))
@@ -326,10 +328,12 @@ pub fn build_create_and_init_nonce(
     authority: &str,
     payer: &str,
     lamports: u64,
+    blockhash: &str,
 ) -> Result<String, String> {
     let nonce_pk = parse_pubkey(nonce_address)?;
     let auth_pk = parse_pubkey(authority)?;
     let payer_pk = parse_pubkey(payer)?;
+    let hash = parse_hash(blockhash)?;
     let system_id = parse_pubkey(SYSTEM_PROGRAM_ID)?;
 
     let create_ix = solana_instruction::Instruction {
@@ -352,7 +356,8 @@ pub fn build_create_and_init_nonce(
         ],
         data: encode_initialize_nonce_data(auth_pk),
     };
-    let message = solana_message::Message::new(&[create_ix, init_ix], Some(&payer_pk));
+    let mut message = solana_message::Message::new(&[create_ix, init_ix], Some(&payer_pk));
+    message.recent_blockhash = hash;
     let msg_bytes = bincode::serialize(&message)
         .map_err(|e| format!("Message serialization failed: {e}"))?;
     Ok(base64_engine().encode(msg_bytes))
@@ -555,16 +560,24 @@ mod tests {
 
     #[test]
     fn test_build_unsigned_sol_transfer() {
+        let blockhash_str = "Cy6SH8KjK1S1YNsjyfcLNLFxqQ18aDjcHDSbCpiMfRPb";
         let result = build_unsigned_sol_transfer(
             "11111111111111111111111111111111",
             "4Q6ivcJN9LGTBryNUF65mEycqG5F3PMK2NkKjSJSkWUb",
             1_000_000,
-            "11111111111111111111111111111111",
+            blockhash_str,
         );
         assert!(result.is_ok());
         let b64 = result.unwrap();
         assert!(!b64.is_empty());
-        assert!(base64_engine().decode(&b64).is_ok());
+        let bytes = base64_engine().decode(&b64).expect("valid base64");
+        // Deserialize and verify recent_blockhash is set correctly
+        let msg: solana_message::Message = bincode::deserialize(&bytes).expect("valid Message");
+        assert_eq!(
+            msg.recent_blockhash,
+            parse_hash(blockhash_str).unwrap(),
+            "recent_blockhash must match input blockhash"
+        );
     }
 
     #[test]

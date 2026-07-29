@@ -281,7 +281,9 @@ mod component {
                     .or(args.from.as_ref())
                     .ok_or_else(|| "Missing payer/from".to_string())?;
                 let lamports = args.lamports.unwrap_or(crate::core::RENT_EXEMPT_NONCE_LAMPORTS);
-                let b64 = build_create_and_init_nonce(nonce, auth, payer, lamports)?;
+                let blockhash = args.blockhash.as_ref()
+                    .ok_or_else(|| "Missing blockhash".to_string())?;
+                let b64 = build_create_and_init_nonce(nonce, auth, payer, lamports, blockhash)?;
                 Ok(serde_json::json!({
                     "unsigned_tx_base64": b64,
                     "kind": "create_nonce",

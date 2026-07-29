@@ -26,7 +26,7 @@ A bar, restaurant, or small shop in Brazil that wants to accept USDC (or any Sol
 | **CLI + Webhook channels** | Customer ↔ agent interaction |
 | **`http_request` tool** | All Solana RPC calls (getLatestBlockhash, getSignaturesForAddress, getTokenAccountBalance) |
 | **Skills** | `payment-terminal.skill.md` teaches the charge/refund workflow; `solana-guide.skill.md` teaches RPC methods, Solana Pay spec, and USDC details |
-| **SOPs** | `verify-payment.cron` polls every 15s; `daily-report.cron` runs at 23:00 BRT |
+| **SOPs** | `verify-payment.cron` polls every 15s; `daily-report.cron` runs at 08:00 UTC |
 | **Approval checkpoints** | `refund-flow.sop.md` pauses for human approval before any refund |
 | **Memory** | Stores pending payments, completed invoices, customer addresses |
 | **Webhook channel** | Optional dashboard for the owner |
@@ -191,7 +191,7 @@ solana-payments-terminal/
 │   │   ├── payment-terminal/SKILL.md      # Payment terminal workflow
 │   │   └── solana-guide/SKILL.md          # Solana RPC & Pay knowledge
 │   ├── sops/
-│   │   ├── verify-payment.cron.md         # Payment polling (every 60s)
+│   │   ├── verify-payment.cron.md         # Payment polling (every 15s)
 │   │   ├── daily-report.cron.md           # End-of-day reconciliation
 │   │   └── refund-flow/
 │   │       └── SOP.md                     # Refund with approval gate

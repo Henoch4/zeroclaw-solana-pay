@@ -80,7 +80,7 @@ model = "openai/gpt-4o"
 
 [cron.verify-payment.schedule]
 kind = "every"
-every_ms = 60000
+every_ms = 15000
 
 [cron.daily-report]
 job_type = "agent"
