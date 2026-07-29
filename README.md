@@ -117,7 +117,7 @@ The checkpoint caught it. The agent cannot execute a refund without explicit hum
 
 ```bash
 # 1. Clone this repo
-git clone https://github.com/henoch/solana-payments-terminal.git
+git clone https://github.com/Henoch4/zeroclaw-solana-pay.git
 cd solana-payments-terminal
 
 # 2. Run ZeroClaw with the agent config
