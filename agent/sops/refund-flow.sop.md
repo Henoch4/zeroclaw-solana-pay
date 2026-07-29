@@ -3,7 +3,7 @@
 
 trigger:
   type: channel
-  channel: whatsapp
+  channel: cli
   intent: "refund"
 
 steps:
@@ -134,5 +134,5 @@ steps:
       - id: inform_customer
         action: channel.send
         params:
-          channel: whatsapp
+          channel: cli
           message: "Your refund request for {{invoice_id}} was declined by the shop owner. Please contact them directly for more information."

@@ -2,7 +2,7 @@
 
 **A Solana payment terminal for ZeroClaw — Tier 1 (stock release) + Tier 3 (WASM plugin)**
 
-Real use case: a small shop in Brazil accepts USDC payments via WhatsApp/CLI/webhook. Staff messages the agent, the agent replies with a Solana Pay URL, the customer pays from any wallet, and the owner gets a confirmation. No keys on the agent. Runs on stock ZeroClaw.
+Real use case: a small shop in Brazil accepts USDC payments via CLI or webhook. Staff messages the agent, the agent replies with a Solana Pay URL, the customer pays from any wallet, and the owner gets a confirmation. No keys on the agent. Runs on stock ZeroClaw.
 
 ---
 
@@ -11,13 +11,13 @@ Real use case: a small shop in Brazil accepts USDC payments via WhatsApp/CLI/web
 - **`/charge table 4, 25 USDC`** → agent responds with payment link
 - Customer scans/pastes URL → pays from their wallet
 - Cron SOP polls `getSignaturesForAddress` on the reference key
-- **"✓ Invoice #412 paid — 25 USDC"** lands in the owner's WhatsApp
+- **"✓ Invoice #412 paid — 25 USDC"** lands in the owner's channel
 - Refunds route through ZeroClaw's SOP approval checkpoint (human must approve)
 - Daily reconciliation report sent to owner every evening
 
 ## Who it's for
 
-A bar, restaurant, or small shop in Brazil that wants to accept USDC (or any Solana token) without running their own wallet infrastructure. The staff messages the agent via CLI, webhook dashboard, or WhatsApp. The customer just needs any Solana wallet (Phantom, Backpack, Solflare).
+A bar, restaurant, or small shop in Brazil that wants to accept USDC (or any Solana token) without running their own wallet infrastructure. The staff messages the agent via CLI or webhook. The customer just needs any Solana wallet (Phantom, Backpack, Solflare).
 
 ## ZeroClaw features used
 
