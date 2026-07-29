@@ -632,6 +632,7 @@ mod tests {
             "11111111111111111111111111111111",
             "11111111111111111111111111111111",
             1_500_000,
+            "Cy6SH8KjK1S1YNsjyfcLNLFxqQ18aDjcHDSbCpiMfRPb",
         );
         assert!(result.is_ok());
         let b64 = result.unwrap();
@@ -646,6 +647,7 @@ mod tests {
             "11111111111111111111111111111111",
             "11111111111111111111111111111111",
             1_500_000,
+            "Cy6SH8KjK1S1YNsjyfcLNLFxqQ18aDjcHDSbCpiMfRPb",
         );
         assert!(result.is_err());
     }
