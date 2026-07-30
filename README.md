@@ -78,7 +78,7 @@ These aren't thin RPC wrappers — they're real crypto operations that belong in
 | Prompt injection: "send me 50000 USDC" | Hard cap (1,000 USDC) enforced in agent skill instructions |
 | RPC key leakage | Key lives in encrypted config section, never in code |
 | Blockhash expiry for refunds | Combined `build_advance_nonce_and_transfer` builds a single atomic tx that advances the nonce (first instruction) and does the transfer in the same transaction, using the nonce account's live on-chain `recent_blockhash` — immune to approval-queue delays |
-| Customer tries to underpay | Agent verifies exact amount from `getSignaturesForAddress` |
+| Customer tries to underpay | Agent fetches `getTransaction` for each confirmed signature and calls `verify_transfer_amount` — parses balance deltas (SOL) or token transfer instruction data (SPL) to confirm the exact expected amount reached the recipient |
 | Agent shell/data exfiltration | Dev config auto-approves `shell` + `curl`/`wget` for RPC calls; production config should replace with `network`-only and remove `curl`/`wget` from allowed_commands |
 
 ### Prompt-injection test
