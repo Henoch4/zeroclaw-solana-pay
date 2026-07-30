@@ -162,8 +162,8 @@ cargo build --target wasm32-wasip2 --release
 
 ```
 cargo test
-> running 36 tests (31 unit + 5 integration)
-> test result: ok. 36 passed; 0 failed
+> running 42 tests (37 unit + 5 integration)
+> test result: ok. 42 passed; 0 failed
 
 cargo build --target wasm32-wasip2 --release
 > Finished `release` profile
