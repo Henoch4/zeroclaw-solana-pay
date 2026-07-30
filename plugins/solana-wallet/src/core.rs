@@ -323,6 +323,45 @@ pub fn build_unsigned_advance_nonce(
     Ok(base64_engine().encode(msg_bytes))
 }
 
+pub fn build_advance_nonce_and_transfer(
+    nonce_address: &str,
+    authority: &str,
+    from: &str,
+    to: &str,
+    lamports: u64,
+    nonce_blockhash: &str,
+) -> Result<String, String> {
+    let nonce_pk = parse_pubkey(nonce_address)?;
+    let auth_pk = parse_pubkey(authority)?;
+    let from_pk = parse_pubkey(from)?;
+    let to_pk = parse_pubkey(to)?;
+    let hash = parse_hash(nonce_blockhash)?;
+    let system_id = parse_pubkey(SYSTEM_PROGRAM_ID)?;
+    let recent_blockhashes_id = parse_pubkey("SysvarRecentB1ockHashes11111111111111111111")?;
+    let advance_ix = solana_instruction::Instruction {
+        program_id: system_id,
+        accounts: vec![
+            solana_instruction::AccountMeta::new(nonce_pk, false),
+            solana_instruction::AccountMeta::new_readonly(auth_pk, true),
+            solana_instruction::AccountMeta::new_readonly(recent_blockhashes_id, false),
+        ],
+        data: encode_advance_nonce_data(),
+    };
+    let transfer_ix = solana_instruction::Instruction {
+        program_id: system_id,
+        accounts: vec![
+            solana_instruction::AccountMeta::new(from_pk, true),
+            solana_instruction::AccountMeta::new(to_pk, false),
+        ],
+        data: encode_system_transfer_data(lamports),
+    };
+    let mut message = solana_message::Message::new(&[advance_ix, transfer_ix], Some(&auth_pk));
+    message.recent_blockhash = hash;
+    let msg_bytes = bincode::serialize(&message)
+        .map_err(|e| format!("Message serialization failed: {e}"))?;
+    Ok(base64_engine().encode(msg_bytes))
+}
+
 pub fn build_create_and_init_nonce(
     nonce_address: &str,
     authority: &str,
@@ -673,14 +712,34 @@ mod tests {
         let bytes = base64_engine().decode(&b64).expect("valid base64");
         let msg: solana_message::Message = bincode::deserialize(&bytes).expect("valid Message");
         assert_eq!(
-            msg.recent_blockhash,
-            parse_hash(blockhash_str).unwrap(),
-            "recent_blockhash must match input blockhash"
-        );
-    }
+             msg.recent_blockhash,
+             parse_hash(blockhash_str).unwrap(),
+             "recent_blockhash must match input blockhash"
+         );
+     }
 
-    #[test]
-    fn test_amount_to_units_precision() {
+     #[test]
+     fn test_build_advance_nonce_and_transfer() {
+         let blockhash_str = "Cy6SH8KjK1S1YNsjyfcLNLFxqQ18aDjcHDSbCpiMfRPb";
+         let result = build_advance_nonce_and_transfer(
+             "8m5J9KNFE1sCjYxJmYxJrNkQF7P7T7hLhL7pL7pL7pL",
+             "11111111111111111111111111111111",
+             "11111111111111111111111111111111",
+             "4Q6ivcJN9LGTBryNUF65mEycqG5F3PMK2NkKjSJSkWUb",
+             1_000_000,
+             blockhash_str,
+         );
+         assert!(result.is_ok());
+         let b64 = result.unwrap();
+         assert!(!b64.is_empty());
+         let bytes = base64_engine().decode(&b64).expect("valid base64");
+         let msg: solana_message::Message = bincode::deserialize(&bytes).expect("valid Message");
+         assert_eq!(msg.recent_blockhash, parse_hash(blockhash_str).unwrap());
+         assert_eq!(msg.instructions.len(), 2);
+     }
+
+     #[test]
+     fn test_amount_to_units_precision() {
         assert_eq!(amount_to_units("0.1", 6).unwrap(), 100_000);
         assert_eq!(amount_to_units("0.000001", 6).unwrap(), 1);
         assert_eq!(amount_to_units("100.999999", 6).unwrap(), 100_999_999);

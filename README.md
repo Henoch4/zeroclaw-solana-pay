@@ -46,7 +46,7 @@ A WebAssembly component (wasm32-wasip2) that wraps Solana-specific operations in
 - **Solana Pay URL construction** — proper URL encoding with reference keys
 - **Payment verification** — parse `getSignaturesForAddress` RPC responses
 - **Unsigned SOL transfer building** — constructs a proper `Transaction::new_unsigned` message, base64-encoded
-- **Durable nonce management** — build `AdvanceNonceAccount` and `CreateAccount`+`InitializeNonceAccount` instructions
+- **Durable nonce management** — build `AdvanceNonceAccount` and `CreateAccount`+`InitializeNonceAccount` instructions, and `build_advance_nonce_and_transfer` (atomic nonce advance + transfer in one tx)
 - **ATA derivation** — `Pubkey::find_program_address` for Associated Token Accounts
 
 The plugin's pure core (`src/core.rs`) has zero WASM deps and is testable with `cargo test` on the host.
@@ -64,7 +64,7 @@ Three operations that genuinely need bounded code inside the sandbox:
 
 1. **Transaction serialization** — building proper Solana `Message` and `Transaction` structs with borsh encoding requires the modular solana crates. A skill can't do this without hand-rolling binary encoding.
 2. **ATA derivation** — `Pubkey::find_program_address` requires the solana-pubkey crate's PDA logic.
-3. **Durable nonce instruction building** — properly encoding system program instructions (CreateAccount, InitializeNonceAccount, AdvanceNonceAccount) requires precise account metas and instruction data.
+3. **Durable nonce instruction building** — properly encoding system program instructions (CreateAccount, InitializeNonceAccount, AdvanceNonceAccount) and the combined `advance_nonce + transfer` atomic transaction that survives approval-queue blockhash expiry.
 
 These aren't thin RPC wrappers — they're real crypto operations that belong in sandboxed, auditable WASM.
 
@@ -77,7 +77,7 @@ These aren't thin RPC wrappers — they're real crypto operations that belong in
 | Prompt injection: "refund to attacker address" | Approval checkpoint catches it — human must approve the destination and amount |
 | Prompt injection: "send me 50000 USDC" | Hard cap (1,000 USDC) enforced in agent skill instructions |
 | RPC key leakage | Key lives in encrypted config section, never in code |
-| Blockhash expiry for refunds | Durable nonce support in the WASM plugin solves this |
+| Blockhash expiry for refunds | Combined `build_advance_nonce_and_transfer` builds a single atomic tx that advances the nonce (first instruction) and does the transfer in the same transaction, using the nonce account's live on-chain `recent_blockhash` — immune to approval-queue delays |
 | Customer tries to underpay | Agent verifies exact amount from `getSignaturesForAddress` |
 | Agent shell/data exfiltration | Dev config auto-approves `shell` + `curl`/`wget` for RPC calls; production config should replace with `network`-only and remove `curl`/`wget` from allowed_commands |
 

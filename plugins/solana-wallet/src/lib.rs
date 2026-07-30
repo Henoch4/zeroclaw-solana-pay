@@ -11,11 +11,10 @@ mod component {
     use std::collections::HashMap;
 
     use crate::core::{
-        amount_to_units, build_create_and_init_nonce, build_transfer_url,
-        build_transfer_url_with_reference, build_unsigned_advance_nonce,
+        amount_to_units, build_advance_nonce_and_transfer, build_create_and_init_nonce,
+        build_transfer_url, build_transfer_url_with_reference, build_unsigned_advance_nonce,
         build_unsigned_sol_transfer, derive_associated_token_account, normalize_address,
-        units_to_amount, validate_address, verify_payment_from_rpc, PluginConfig,
-        SolanaPayUrl,
+        units_to_amount, validate_address, verify_payment_from_rpc, PluginConfig, SolanaPayUrl,
     };
     use exports::zeroclaw::plugin::plugin_info::Guest as PluginInfo;
     use exports::zeroclaw::plugin::tool::{Guest as Tool, ToolResult};
@@ -97,6 +96,7 @@ mod component {
                             "verify_payment",
                             "build_unsigned_sol_transfer",
                             "build_unsigned_advance_nonce",
+                            "build_advance_nonce_and_transfer",
                             "build_create_and_init_nonce",
                             "derive_ata",
                             "get_config"
@@ -270,6 +270,30 @@ mod component {
                 Ok(serde_json::json!({
                     "unsigned_tx_base64": b64,
                     "kind": "advance_nonce",
+                }).to_string())
+            }
+            "build_advance_nonce_and_transfer" => {
+                let nonce = args.nonce_address.as_ref()
+                    .ok_or_else(|| "Missing nonce_address".to_string())?;
+                let auth = args.authority.as_ref()
+                    .ok_or_else(|| "Missing authority".to_string())?;
+                let from = args.from.as_ref()
+                    .ok_or_else(|| "Missing from".to_string())?;
+                let to = args.to.as_ref()
+                    .or(args.recipient.as_ref())
+                    .ok_or_else(|| "Missing to/recipient".to_string())?;
+                let lamports = args.lamports.or(args.amount_units)
+                    .ok_or_else(|| "Missing lamports/amount_units".to_string())?;
+                let blockhash = args.blockhash.as_ref()
+                    .ok_or_else(|| "Missing blockhash".to_string())?;
+                let b64 = build_advance_nonce_and_transfer(nonce, auth, from, to, lamports, blockhash)?;
+                Ok(serde_json::json!({
+                    "unsigned_tx_base64": b64,
+                    "kind": "advance_nonce_and_transfer",
+                    "nonce_address": nonce,
+                    "from": from,
+                    "to": to,
+                    "amount_lamports": lamports,
                 }).to_string())
             }
             "build_create_and_init_nonce" => {
