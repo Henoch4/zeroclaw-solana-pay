@@ -79,7 +79,7 @@ These aren't thin RPC wrappers — they're real crypto operations that belong in
 | RPC key leakage | Key lives in encrypted config section, never in code |
 | Blockhash expiry for refunds | Combined `build_advance_nonce_and_transfer` builds a single atomic tx that advances the nonce (first instruction) and does the transfer in the same transaction, using the nonce account's live on-chain `recent_blockhash` — immune to approval-queue delays |
 | Customer tries to underpay | Agent fetches `getTransaction` for each confirmed signature and calls `verify_transfer_amount` — parses balance deltas (SOL) or token transfer instruction data (SPL) to confirm the exact expected amount reached the recipient |
-| Agent shell/data exfiltration | Dev config auto-approves `shell` + `curl`/`wget` for RPC calls; production config should replace with `network`-only and remove `curl`/`wget` from allowed_commands |
+| Agent shell/data exfiltration | Config auto-approves `network` only (no shell, no curl/wget); `allowed_tools` excludes `shell`, `allowed_commands` excludes `curl`/`wget` — production-ready by default |
 
 ### Prompt-injection test
 
