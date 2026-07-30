@@ -27,10 +27,10 @@ temperature = 0.5
 
 [risk_profiles.default]
 level = "supervised"
-allowed_tools = ["network", "shell", "memory", "read", "file_read"]
-allowed_commands = ["ls", "git", "cat", "echo", "curl", "wget"]
+allowed_tools = ["network", "memory", "read", "file_read"]
+allowed_commands = ["ls", "git", "cat", "echo"]
 allowed_roots = ["."]
-auto_approve = ["network", "shell", "memory"]
+auto_approve = ["network"]
 block_high_risk_commands = true
 
 [runtime_profiles.default]
