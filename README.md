@@ -79,6 +79,7 @@ These aren't thin RPC wrappers — they're real crypto operations that belong in
 | RPC key leakage | Key lives in encrypted config section, never in code |
 | Blockhash expiry for refunds | Durable nonce support in the WASM plugin solves this |
 | Customer tries to underpay | Agent verifies exact amount from `getSignaturesForAddress` |
+| Agent shell/data exfiltration | Dev config auto-approves `shell` + `curl`/`wget` for RPC calls; production config should replace with `network`-only and remove `curl`/`wget` from allowed_commands |
 
 ### Prompt-injection test
 

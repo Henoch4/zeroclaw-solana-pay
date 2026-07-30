@@ -305,7 +305,7 @@ pub fn build_unsigned_advance_nonce(
     let auth_pk = parse_pubkey(authority)?;
     let hash = parse_hash(blockhash)?;
     let system_id = parse_pubkey(SYSTEM_PROGRAM_ID)?;
-    let recent_blockhashes_id = parse_pubkey("SysvarRecentB1ockHashes1111111111111111111")?;
+    let recent_blockhashes_id = parse_pubkey("SysvarRecentB1ockHashes11111111111111111111")?;
 
     let ix = solana_instruction::Instruction {
         program_id: system_id,
@@ -627,17 +627,24 @@ mod tests {
 
     #[test]
     fn test_build_create_and_init_nonce_success() {
+        let blockhash_str = "Cy6SH8KjK1S1YNsjyfcLNLFxqQ18aDjcHDSbCpiMfRPb";
         let result = build_create_and_init_nonce(
             "8m5J9KNFE1sCjYxJmYxJrNkQF7P7T7hLhL7pL7pL7pL",
             "11111111111111111111111111111111",
             "11111111111111111111111111111111",
             1_500_000,
-            "Cy6SH8KjK1S1YNsjyfcLNLFxqQ18aDjcHDSbCpiMfRPb",
+            blockhash_str,
         );
         assert!(result.is_ok());
         let b64 = result.unwrap();
         assert!(!b64.is_empty());
-        assert!(base64_engine().decode(&b64).is_ok());
+        let bytes = base64_engine().decode(&b64).expect("valid base64");
+        let msg: solana_message::Message = bincode::deserialize(&bytes).expect("valid Message");
+        assert_eq!(
+            msg.recent_blockhash,
+            parse_hash(blockhash_str).unwrap(),
+            "recent_blockhash must match input blockhash"
+        );
     }
 
     #[test]
@@ -650,6 +657,26 @@ mod tests {
             "Cy6SH8KjK1S1YNsjyfcLNLFxqQ18aDjcHDSbCpiMfRPb",
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_build_unsigned_advance_nonce_blockhash() {
+        let blockhash_str = "Cy6SH8KjK1S1YNsjyfcLNLFxqQ18aDjcHDSbCpiMfRPb";
+        let result = build_unsigned_advance_nonce(
+            "8m5J9KNFE1sCjYxJmYxJrNkQF7P7T7hLhL7pL7pL7pL",
+            "11111111111111111111111111111111",
+            blockhash_str,
+        );
+        assert!(result.is_ok());
+        let b64 = result.unwrap();
+        assert!(!b64.is_empty());
+        let bytes = base64_engine().decode(&b64).expect("valid base64");
+        let msg: solana_message::Message = bincode::deserialize(&bytes).expect("valid Message");
+        assert_eq!(
+            msg.recent_blockhash,
+            parse_hash(blockhash_str).unwrap(),
+            "recent_blockhash must match input blockhash"
+        );
     }
 
     #[test]
