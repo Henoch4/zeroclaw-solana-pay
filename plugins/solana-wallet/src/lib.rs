@@ -14,7 +14,8 @@ mod component {
         amount_to_units, build_advance_nonce_and_transfer, build_create_and_init_nonce,
         build_transfer_url, build_transfer_url_with_reference, build_unsigned_advance_nonce,
         build_unsigned_sol_transfer, derive_associated_token_account, normalize_address,
-        units_to_amount, validate_address, verify_payment_from_rpc, PluginConfig, SolanaPayUrl,
+        units_to_amount, validate_address, verify_payment_from_rpc, verify_transfer_amount,
+        PluginConfig, SolanaPayUrl,
     };
     use exports::zeroclaw::plugin::plugin_info::Guest as PluginInfo;
     use exports::zeroclaw::plugin::tool::{Guest as Tool, ToolResult};
@@ -94,6 +95,7 @@ mod component {
                             "units_to_amount",
                             "build_transfer_url",
                             "verify_payment",
+                            "verify_transfer_amount",
                             "build_unsigned_sol_transfer",
                             "build_unsigned_advance_nonce",
                             "build_advance_nonce_and_transfer",
@@ -238,6 +240,26 @@ mod component {
                     "signature_count": verification.signature_count,
                     "signatures": verification.signatures,
                     "slot": verification.slot,
+                })).map_err(|e| e.to_string())?)
+            }
+            "verify_transfer_amount" => {
+                let transaction = args.rpc_response.as_ref()
+                    .ok_or_else(|| "Missing transaction JSON (use rpc_response field)".to_string())?;
+                let verification = verify_transfer_amount(
+                    transaction,
+                    args.amount_units,
+                    args.to.as_ref().or(args.recipient.as_ref()).map(|s| s.as_str()),
+                    args.amount_units,
+                    args.spl_token.as_ref().or(args.mint.as_ref()).map(|s| s.as_str()),
+                )?;
+                Ok(serde_json::to_string(&serde_json::json!({
+                    "amount_correct": verification.amount_correct,
+                    "recipient_correct": verification.recipient_correct,
+                    "mint_correct": verification.mint_correct,
+                    "actual_lamports": verification.actual_lamports,
+                    "actual_token_amount": verification.actual_token_amount,
+                    "actual_recipient": verification.actual_recipient,
+                    "actual_mint": verification.actual_mint,
                 })).map_err(|e| e.to_string())?)
             }
             "build_unsigned_sol_transfer" => {

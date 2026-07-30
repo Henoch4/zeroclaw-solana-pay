@@ -74,8 +74,22 @@ Reply via channel with:
 
 ### 5. Monitor Payment
 The SOP `verify-payment` runs on cron to check for payment confirmation.
-When confirmed, post in the owner's channel:
-"✓ Invoice #412 paid — 25 USDC — sig: <first 8 chars>"
+
+**Two-step verification process:**
+
+1. **Signature discovery** — poll `getSignaturesForAddress` on the reference key (every 15s on cron)
+2. **Amount verification** — for each confirmed signature, call `getTransaction` with the signature to get the full transaction details, then pass that JSON to the `verify_transfer_amount` tool with the expected amount, recipient, and mint:
+   - `rpc_response` = the full `getTransaction` JSON response
+   - `amount_units` = the expected amount in base units (e.g. 25000000 for 25 USDC)
+   - `to` = the shop's wallet address
+   - `spl_token` = the expected token mint (e.g. `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` for USDC)
+
+The tool returns `amount_correct`, `recipient_correct`, and `mint_correct` booleans. Only report "paid in full" when ALL THREE are true.
+
+**Why this matters:** `getSignaturesForAddress` only returns signatures — no amounts. A customer (or attacker) can tag a reference-key transaction for 1 lamport, or for the wrong token. Without checking the actual on-chain transfer amount via `getTransaction`, you can't distinguish a full payment from an underpayment.
+
+When confirmed and amount-verified, post in the owner's channel:
+"✓ Invoice #412 paid — 25 USDC — sig: <first 8 chars> — amount verified on-chain"
 
 ### 6. Refunds (with approval gate)
 When a refund is requested, follow this procedure:

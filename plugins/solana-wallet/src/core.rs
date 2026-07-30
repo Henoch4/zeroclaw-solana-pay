@@ -34,6 +34,17 @@ pub struct PaymentVerification {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AmountVerification {
+    pub amount_correct: bool,
+    pub recipient_correct: bool,
+    pub mint_correct: bool,
+    pub actual_lamports: Option<u64>,
+    pub actual_token_amount: Option<u64>,
+    pub actual_recipient: Option<String>,
+    pub actual_mint: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct PluginConfig {
     pub default_rpc_url: String,
@@ -268,6 +279,131 @@ pub fn verify_payment_from_rpc(
         signatures: sigs,
         slot: highest_slot,
         error: None,
+    })
+}
+
+pub fn verify_transfer_amount(
+    transaction_json: &str,
+    expected_lamports: Option<u64>,
+    expected_recipient: Option<&str>,
+    expected_token_amount: Option<u64>,
+    expected_mint: Option<&str>,
+) -> Result<AmountVerification, String> {
+    let parsed: serde_json::Value = serde_json::from_str(transaction_json)
+        .map_err(|e| format!("Invalid transaction JSON: {e}"))?;
+    let meta = parsed
+        .get("meta")
+        .and_then(|m| m.as_object())
+        .ok_or_else(|| "Missing or invalid 'meta' field".to_string())?;
+    let transaction = parsed
+        .get("transaction")
+        .and_then(|t| t.as_object())
+        .ok_or_else(|| "Missing or invalid 'transaction' field".to_string())?;
+    let message = transaction
+        .get("message")
+        .and_then(|m| m.as_object())
+        .ok_or_else(|| "Missing or invalid 'message' field".to_string())?;
+    let account_keys = message
+        .get("accountKeys")
+        .and_then(|k| k.as_array())
+        .ok_or_else(|| "Missing or invalid 'accountKeys' field".to_string())?;
+    let mut actual_lamports: Option<u64> = None;
+    let mut actual_token_amount: Option<u64> = None;
+    let mut actual_recipient: Option<String> = None;
+    let mut actual_mint: Option<String> = None;
+    if let (Some(pre), Some(post)) = (
+        meta.get("preBalances").and_then(|b| b.as_array()),
+        meta.get("postBalances").and_then(|b| b.as_array()),
+    ) {
+        for i in 0..pre.len().min(post.len()) {
+            let diff = post[i].as_i64().unwrap_or(0) - pre[i].as_i64().unwrap_or(0);
+            if diff <= 0 { continue; }
+
+            if let Some(key) = account_keys.get(i).and_then(|k| k.as_str()) {
+                actual_lamports = Some(diff as u64);
+                if actual_recipient.is_none() {
+                    actual_recipient = Some(key.to_string());
+                }
+                if let Some(expected) = expected_recipient {
+                    if key == expected {
+                        actual_recipient = Some(key.to_string());
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+    if let Some(pre_token) = meta.get("preTokenBalances").and_then(|b| b.as_array()) {
+        if let Some(post_token) = meta.get("postTokenBalances").and_then(|b| b.as_array()) {
+            for (pre, post) in pre_token.iter().zip(post_token.iter()) {
+                let pre_amount = pre
+                    .get("uiTokenAmount")
+                    .and_then(|a| a.get("uiAmount"))
+                    .and_then(|a| a.as_f64())
+                    .unwrap_or(0.0);
+                let post_amount = post
+                    .get("uiTokenAmount")
+                    .and_then(|a| a.get("uiAmount"))
+                    .and_then(|a| a.as_f64())
+                    .unwrap_or(0.0);
+                let diff = post_amount - pre_amount;
+                if diff > 0.0 {
+                    let mint = post.get("mint").and_then(|m| m.as_str()).unwrap_or("");
+                    let owner = post.get("owner").and_then(|o| o.as_str()).unwrap_or("");
+                    if let Some(expected) = expected_recipient {
+                        if owner == expected {
+                            let decimals = post
+                                .get("uiTokenAmount")
+                                .and_then(|a| a.get("decimals"))
+                                .and_then(|d| d.as_u64())
+                                .unwrap_or(6);
+                            actual_token_amount = Some((diff * 10f64.powi(decimals as i32)) as u64);
+                            actual_recipient = Some(owner.to_string());
+                            actual_mint = Some(mint.to_string());
+                            break;
+                        }
+                    } else {
+                        let decimals = post
+                            .get("uiTokenAmount")
+                            .and_then(|a| a.get("decimals"))
+                            .and_then(|d| d.as_u64())
+                            .unwrap_or(6);
+                        actual_token_amount = Some((diff * 10f64.powi(decimals as i32)) as u64);
+                        actual_recipient = Some(owner.to_string());
+                        actual_mint = Some(mint.to_string());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    let amount_correct = if let Some(expected) = expected_lamports {
+        actual_lamports.unwrap_or(0) == expected
+    } else if let Some(expected) = expected_token_amount {
+        actual_token_amount.unwrap_or(0) == expected
+    } else {
+        actual_lamports.unwrap_or(0) > 0 || actual_token_amount.unwrap_or(0) > 0
+    };
+    let recipient_correct = if let Some(expected) = expected_recipient {
+        actual_recipient.as_deref() == Some(expected)
+    } else {
+        true
+    };
+    let mint_correct = if let Some(expected) = expected_mint {
+        actual_mint.as_deref() == Some(expected)
+    } else {
+        true
+    };
+    Ok(AmountVerification {
+        amount_correct,
+        recipient_correct,
+        mint_correct,
+        actual_lamports,
+        actual_token_amount,
+        actual_recipient,
+        actual_mint,
     })
 }
 
@@ -812,5 +948,128 @@ mod tests {
         assert_eq!(n.len(), 32);
         let n2 = normalize_address(&n).unwrap();
         assert_eq!(n, n2);
+    }
+
+    #[test]
+    fn test_verify_transfer_amount_sol_match() {
+        let tx_json = r#"{
+            "meta": {
+                "preBalances": [1000000000, 5000000, 2000000],
+                "postBalances": [999000000, 15000000, 2000000],
+                "preTokenBalances": [],
+                "postTokenBalances": []
+            },
+            "transaction": {
+                "message": {
+                    "accountKeys": [
+                        "11111111111111111111111111111111",
+                        "4Q6ivcJN9LGTBryNUF65mEycqG5F3PMK2NkKjSJSkWUb",
+                        "SystemProgram11111111111111111111111111111111"
+                    ]
+                }
+            }
+        }"#;
+        let result = verify_transfer_amount(
+            tx_json,
+            Some(10000000),
+            Some("4Q6ivcJN9LGTBryNUF65mEycqG5F3PMK2NkKjSJSkWUb"),
+            None,
+            None,
+        ).unwrap();
+        assert!(result.amount_correct);
+        assert!(result.recipient_correct);
+        assert!(result.mint_correct);
+        assert_eq!(result.actual_lamports, Some(10000000));
+    }
+
+    #[test]
+    fn test_verify_transfer_amount_underpayment() {
+        let tx_json = r#"{
+            "meta": {
+                "preBalances": [1000000000, 5000000, 2000000],
+                "postBalances": [999999999, 5000001, 2000000],
+                "preTokenBalances": [],
+                "postTokenBalances": []
+            },
+            "transaction": {
+                "message": {
+                    "accountKeys": [
+                        "11111111111111111111111111111111",
+                        "4Q6ivcJN9LGTBryNUF65mEycqG5F3PMK2NkKjSJSkWUb",
+                        "SystemProgram11111111111111111111111111111111"
+                    ]
+                }
+            }
+        }"#;
+        let result = verify_transfer_amount(
+            tx_json,
+            Some(25000000),
+            Some("4Q6ivcJN9LGTBryNUF65mEycqG5F3PMK2NkKjSJSkWUb"),
+            None,
+            None,
+        ).unwrap();
+        assert!(!result.amount_correct);
+        assert!(result.recipient_correct);
+        assert_eq!(result.actual_lamports, Some(1));
+    }
+
+    #[test]
+    fn test_verify_transfer_amount_wrong_recipient() {
+        let tx_json = r#"{
+            "meta": {
+                "preBalances": [1000000000, 5000000, 2000000],
+                "postBalances": [999000000, 15000000, 2000000],
+                "preTokenBalances": [],
+                "postTokenBalances": []
+            },
+            "transaction": {
+                "message": {
+                    "accountKeys": [
+                        "11111111111111111111111111111111",
+                        "8m5J9KNFE1sCjYxJmYxJrNkQF7P7T7hLhL7pL7pL7pL",
+                        "SystemProgram11111111111111111111111111111111"
+                    ]
+                }
+            }
+        }"#;
+        let result = verify_transfer_amount(
+            tx_json,
+            Some(10000000),
+            Some("4Q6ivcJN9LGTBryNUF65mEycqG5F3PMK2NkKjSJSkWUb"),
+            None,
+            None,
+        ).unwrap();
+        assert!(!result.recipient_correct);
+        assert!(result.amount_correct);
+    }
+
+    #[test]
+    fn test_verify_transfer_amount_no_transfer() {
+        let tx_json = r#"{
+            "meta": {
+                "preBalances": [1000000000, 5000000],
+                "postBalances": [1000000000, 5000000],
+                "preTokenBalances": [],
+                "postTokenBalances": []
+            },
+            "transaction": {
+                "message": {
+                    "accountKeys": [
+                        "11111111111111111111111111111111",
+                        "4Q6ivcJN9LGTBryNUF65mEycqG5F3PMK2NkKjSJSkWUb"
+                    ]
+                }
+            }
+        }"#;
+        let result = verify_transfer_amount(
+            tx_json,
+            Some(10000000),
+            Some("4Q6ivcJN9LGTBryNUF65mEycqG5F3PMK2NkKjSJSkWUb"),
+            None,
+            None,
+        ).unwrap();
+        assert!(!result.amount_correct);
+        assert!(!result.recipient_correct);
+        assert_eq!(result.actual_lamports, None);
     }
 }
